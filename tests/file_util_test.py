@@ -19,6 +19,7 @@
 
 import __builtin__
 import errno
+import io
 import os
 import posix
 import pwd
@@ -26,7 +27,7 @@ import shutil
 import stat
 import tempfile
 
-import mox
+from mox3 import mox
 
 from google.apputils import basetest
 from google.apputils import file_util
@@ -117,16 +118,15 @@ class FileUtilMoxTest(FileUtilMoxTestBase):
     self.mox.VerifyAll()
 
   def testSuccessfulRead(self):
+    import logging
     file_handle = self.mox.CreateMockAnything()
-    self.mox.StubOutWithMock(__builtin__, 'open', use_mock_anything=True)
-    open(self.file_path).AndReturn(file_handle)
-    file_handle.__enter__().AndReturn(file_handle)
-    file_handle.read().AndReturn(self.sample_contents)
-    file_handle.__exit__(None, None, None)
+    self.mox.StubOutWithMock(__builtin__, 'open')
+    open(self.file_path).AndReturn(io.BytesIO(self.sample_contents))
 
     self.mox.ReplayAll()
     try:
-      self.assertEquals(file_util.Read(self.file_path), self.sample_contents)
+      contents = file_util.Read(self.file_path)
+      self.assertEquals(contents, self.sample_contents)
       self.mox.VerifyAll()
     finally:
       # Because we mock out the built-in open() function, which the unittest

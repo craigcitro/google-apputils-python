@@ -23,7 +23,7 @@ import shutil
 import socket
 import sys
 
-import mox
+from mox3 import mox
 
 from google.apputils import basetest
 

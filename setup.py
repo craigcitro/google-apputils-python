@@ -31,7 +31,7 @@ REQUIRE = [
     "pytz>=2010",
     ]
 
-TEST_REQUIRE = ["mox>=0.5"]
+TEST_REQUIRE = ["mox3>=0.5"]
 
 if sys.version_info[:2] < (2, 7):
   # unittest2 is a backport of Python 2.7's unittest.
