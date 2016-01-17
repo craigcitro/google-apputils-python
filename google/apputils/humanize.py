@@ -353,7 +353,7 @@ FRACTION_ROUND_UP = 1.0 - FRACTION_ROUND_DOWN
 
 
 def PrettyFraction(number, spacer=''):
-  """Convert a number into a string that might include a unicode fraction.
+  """Convert a number into a string that might include a Unicode fraction.
 
   This method returns the integer representation followed by the closest
   fraction of a denominator 2, 3, 4, 5 or 8.
@@ -366,7 +366,7 @@ def PrettyFraction(number, spacer=''):
         default is an empty string.
 
   Returns:
-    a unicode string representing the number.
+    a Unicode string representing the number.
   """
   # We do not want small negative numbers to display as -0.
   if number < -FRACTION_ROUND_DOWN:

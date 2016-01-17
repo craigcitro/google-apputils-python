@@ -117,7 +117,9 @@ class HumanizeTest(basetest.TestCase):
     # Test both int and long versions of the same quantity to make sure they are
     # printed in the same way.
     self.assertEqual('10.0 QPS', humanize.BinaryPrefix(10, 'QPS', precision=3))
-    self.assertEqual('10.0 QPS', humanize.BinaryPrefix(10L, 'QPS', precision=3))
+    # The following tests will fail on Python 3 since it no longer supports
+    # the L suffix.
+    # self.assertEqual('10.0 QPS', humanize.BinaryPrefix(10L, 'QPS', precision=3))
 
   def testDecimalScale(self):
     self.assertIsInstance(humanize.DecimalScale(0, '')[0], float)

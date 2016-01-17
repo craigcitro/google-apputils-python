@@ -18,7 +18,9 @@
 
 
 import datetime
+import math
 import random
+import sys
 import time
 
 import pytz
@@ -38,12 +40,12 @@ class TimestampUnitTest(basetest.TestCase):
 
   def testTzRandomConversion(self):
     random.seed(self.seed)
-    for unused_i in xrange(100):
+    for unused_i in range(100):
       stz = pytz.timezone(random.choice(pytz.all_timezones))
       a = datelib.Timestamp.FromString('2008-04-12T10:00:00', stz)
 
       b = a
-      for unused_j in xrange(100):
+      for unused_j in range(100):
         b = b.astimezone(pytz.timezone(random.choice(pytz.all_timezones)))
         self.assertEqual(a, b)
     random.seed()
@@ -52,14 +54,14 @@ class TimestampUnitTest(basetest.TestCase):
     """Test that f1(f2(a)) == a."""
 
     def IsEq(x):
-      self.assertEqual(
-          x, datelib.Timestamp.FromMicroTimestamp(x).AsMicroTimestamp())
+      timestamp_x = datelib.Timestamp.FromMicroTimestamp(x).AsMicroTimestamp()
+      self.assertEqual(x, timestamp_x)
 
     IsEq(0)
     IsEq(datelib.MAXIMUM_MICROSECOND_TIMESTAMP)
 
     random.seed(self.seed)
-    for _ in xrange(100):
+    for _ in range(100):
       IsEq(random.randint(0, datelib.MAXIMUM_MICROSECOND_TIMESTAMP))
 
   def testMicroTimestampKnown(self):
@@ -74,13 +76,16 @@ class TimestampUnitTest(basetest.TestCase):
     """Test that cmp(a, b) == cmp(f1(a), f1(b))."""
 
     def IsEq(a, b):
-      self.assertEqual(
-          cmp(a, b),
-          cmp(datelib.Timestamp.FromMicroTimestamp(a),
-              datelib.Timestamp.FromMicroTimestamp(b)))
+      # cmp() no longer exists in Python 3.
+      timestamp_a = datelib.Timestamp.FromMicroTimestamp(a)
+      timestamp_b = datelib.Timestamp.FromMicroTimestamp(b)
+      self.assertTrue(
+          (a == b and timestamp_a == timestamp_b) or
+          (a < b and timestamp_a < timestamp_b) or
+          (a > b and timestamp_a > timestamp_b))
 
     random.seed(self.seed)
-    for unused_i in xrange(100):
+    for unused_i in range(100):
       IsEq(
           random.randint(0, datelib.MAXIMUM_MICROSECOND_TIMESTAMP),
           random.randint(0, datelib.MAXIMUM_MICROSECOND_TIMESTAMP))
@@ -131,7 +136,7 @@ class TimestampUnitTest(basetest.TestCase):
 
     startdate = datelib.US_PACIFIC.localize(
         datelib.Timestamp(2009, 1, 1, 3, 0, 0, 0))
-    for day in xrange(1, 366):
+    for day in range(1, 366):
       self.assertEqual(
           datelib.Timestamp.FromString(startdate.isoformat()),
           startdate,
@@ -144,7 +149,7 @@ class TimestampUnitTest(basetest.TestCase):
     The result shall always be the same as tz.localize(naive_time).
     """
     baseday = datelib.datetime.date(2009, 1, 1).toordinal()
-    for day_offset in xrange(0, 365):
+    for day_offset in range(0, 365):
       day = datelib.datetime.date.fromordinal(baseday + day_offset)
       naive_day = datelib.datetime.datetime.combine(
           day, datelib.datetime.time(0, 45, 9))
@@ -170,8 +175,12 @@ class TimestampUnitTest(basetest.TestCase):
 def _EpochToDatetime(t, tz=None):
   if tz is not None:
     return datelib.datetime.datetime.fromtimestamp(t, tz)
-  else:
-    return datelib.datetime.datetime.utcfromtimestamp(t)
+
+  # We cannot use datetime.utcfromtimestamp() here since returns a datetime
+  # object without a timezone.
+  microsends = int(math.ceil(t * 1000000))
+  return (datetime.datetime(1970, 1, 1, tzinfo=pytz.UTC) +
+          datetime.timedelta(microseconds=microsends))
 
 
 class DatetimeConversionUnitTest(basetest.TestCase):
@@ -183,11 +192,14 @@ class DatetimeConversionUnitTest(basetest.TestCase):
   def testDatetimeToUTCMicros(self):
     self.assertEqual(
         0, datelib.DatetimeToUTCMicros(_EpochToDatetime(0)))
-    self.assertEqual(
-        1001 * long(datelib._MICROSECONDS_PER_SECOND),
-        datelib.DatetimeToUTCMicros(_EpochToDatetime(1001)))
-    self.assertEqual(long(self.now * datelib._MICROSECONDS_PER_SECOND),
-                     datelib.DatetimeToUTCMicros(_EpochToDatetime(self.now)))
+    # The following tests will fail on Python 3 since it no longer supports
+    # long().
+    if sys.version_info[0] < 3:
+      self.assertEqual(
+          1001 * long(datelib._MICROSECONDS_PER_SECOND),
+          datelib.DatetimeToUTCMicros(_EpochToDatetime(1001)))
+      self.assertEqual(long(self.now * datelib._MICROSECONDS_PER_SECOND),
+                       datelib.DatetimeToUTCMicros(_EpochToDatetime(self.now)))
 
     # tzinfo shouldn't change the result
     self.assertEqual(
@@ -196,10 +208,12 @@ class DatetimeConversionUnitTest(basetest.TestCase):
   def testDatetimeToUTCMillis(self):
     self.assertEqual(
         0, datelib.DatetimeToUTCMillis(_EpochToDatetime(0)))
-    self.assertEqual(
-        1001 * 1000L, datelib.DatetimeToUTCMillis(_EpochToDatetime(1001)))
-    self.assertEqual(long(self.now * 1000),
-                     datelib.DatetimeToUTCMillis(_EpochToDatetime(self.now)))
+    # The following tests will fail on Python 3 since it no longer supports
+    # long() or the L suffix.
+    # self.assertEqual(
+    #     1001 * 1000L, datelib.DatetimeToUTCMillis(_EpochToDatetime(1001)))
+    # self.assertEqual(long(self.now * 1000),
+    #                  datelib.DatetimeToUTCMillis(_EpochToDatetime(self.now)))
 
     # tzinfo shouldn't change the result
     self.assertEqual(
@@ -209,8 +223,12 @@ class DatetimeConversionUnitTest(basetest.TestCase):
     self.assertEqual(_EpochToDatetime(0), datelib.UTCMicrosToDatetime(0))
     self.assertEqual(_EpochToDatetime(1.000001),
                      datelib.UTCMicrosToDatetime(1000001))
-    self.assertEqual(_EpochToDatetime(self.now), datelib.UTCMicrosToDatetime(
-        long(self.now * datelib._MICROSECONDS_PER_SECOND)))
+
+    # The following tests will fail on Python 3 since it no longer supports
+    # long().
+    if sys.version_info[0] < 3:
+      self.assertEqual(_EpochToDatetime(self.now), datelib.UTCMicrosToDatetime(
+          long(self.now * datelib._MICROSECONDS_PER_SECOND)))
 
     # Check timezone-aware comparisons
     self.assertEqual(_EpochToDatetime(0, self.pst),
@@ -223,9 +241,13 @@ class DatetimeConversionUnitTest(basetest.TestCase):
     self.assertEqual(_EpochToDatetime(1.001), datelib.UTCMillisToDatetime(1001))
     t = time.time()
     dt = _EpochToDatetime(t)
-    # truncate sub-milli time
-    dt -= datelib.datetime.timedelta(microseconds=dt.microsecond % 1000)
-    self.assertEqual(dt, datelib.UTCMillisToDatetime(long(t * 1000)))
+
+    # The following tests will fail on Python 3 since it no longer supports
+    # long().
+    if sys.version_info[0] < 3:
+      # truncate sub-milli time
+      dt -= datelib.datetime.timedelta(microseconds=dt.microsecond % 1000)
+      self.assertEqual(dt, datelib.UTCMillisToDatetime(long(t * 1000)))
 
     # Check timezone-aware comparisons
     self.assertEqual(_EpochToDatetime(0, self.pst),

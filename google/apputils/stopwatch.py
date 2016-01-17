@@ -46,7 +46,7 @@ small_but_expensive function will show up in the timer for just_that and not
 all_this.
 """
 
-import StringIO
+import io
 import time
 
 
@@ -150,7 +150,7 @@ class StopWatch(object):
     if total == 0.0:
       return 0.0
 
-    all_timers = sum(self.accum.itervalues())
+    all_timers = sum(iter(self.accum.values()))
     return total - (all_timers - total)
 
   def results(self, verbose=False):
@@ -166,7 +166,9 @@ class StopWatch(object):
     """
     now = time.time()
 
-    all_names = self.accum.keys()
+    # We need to convert to a list type since Python 3 will return
+    # a dict_keys type.
+    all_names = list(self.accum.keys())
     names = []
 
     if 'total' in all_names:
@@ -193,7 +195,7 @@ class StopWatch(object):
     Returns:
       A string describing the stopwatch.
     """
-    output = StringIO.StringIO()
+    output = io.StringIO()
     results = self.results(verbose=verbose)
     maxlength = max([len(result[0]) for result in results])
     for result in results:

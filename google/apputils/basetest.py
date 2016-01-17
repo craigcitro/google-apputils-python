@@ -34,7 +34,11 @@ import sys
 import tempfile
 import types
 import unittest
-import urlparse
+
+try:
+  import urlparse
+except ImportError:
+  import urllib.parse as urlparse
 
 try:
   import faulthandler  # pylint: disable=g-import-not-at-top
@@ -50,6 +54,19 @@ import gflags as flags
 from google.apputils import shellutil
 
 FLAGS = flags.FLAGS
+
+
+# Sadly there is no types.IntTypes defined for us and types.StringTypes is
+# not supported by Python 3.
+if sys.version_info[0] < 3:
+  _INT_TYPES = (int, long)
+  _STRING_TYPES = (basestring)
+  _UNICODE_TYPE = unicode
+else:
+  _INT_TYPES = (int)
+  _STRING_TYPES = (str)
+  _UNICODE_TYPE = str
+
 
 # ----------------------------------------------------------------------
 # Internal functions to extract default flag values from environment.
@@ -349,8 +366,8 @@ class TestCase(unittest.TestCase):
     # Fail on strings: empirically, passing strings to this test method
     # is almost always a bug. If comparing the character sets of two strings
     # is desired, cast the inputs to sets or lists explicitly.
-    if (isinstance(expected_seq, basestring) or
-        isinstance(actual_seq, basestring)):
+    if (isinstance(expected_seq, _STRING_TYPES) or
+        isinstance(actual_seq, _STRING_TYPES)):
       self.fail('Passing a string to assertSameElements is usually a bug. '
                 'Did you mean to use assertEqual?\n'
                 'Expected: %s\nActual: %s' % (expected_seq, actual_seq))
@@ -381,9 +398,9 @@ class TestCase(unittest.TestCase):
   # has a different error format. However, I find this slightly more readable.
   def assertMultiLineEqual(self, first, second, msg=None):
     """Assert that two multi-line strings are equal."""
-    assert isinstance(first, types.StringTypes), (
+    assert isinstance(first, _STRING_TYPES), (
         'First argument is not a string: %r' % (first,))
-    assert isinstance(second, types.StringTypes), (
+    assert isinstance(second, _STRING_TYPES), (
         'Second argument is not a string: %r' % (second,))
 
     if first == second:
@@ -439,7 +456,7 @@ class TestCase(unittest.TestCase):
       message:  The message to be printed if the test fails.
     """
     # pylint: enable=g-doc-bad-indent
-    if isinstance(regexes, basestring):
+    if isinstance(regexes, _STRING_TYPES):
       self.fail('regexes is a string; use assertRegexpMatches instead.')
     if not regexes:
       self.fail('No regexes specified.')
@@ -449,19 +466,19 @@ class TestCase(unittest.TestCase):
       if type(regex) is not regex_type:
         self.fail('regexes list must all be the same type.')
 
-    if regex_type is bytes and isinstance(actual_str, unicode):
+    if regex_type is bytes and isinstance(actual_str, _UNICODE_TYPE):
       regexes = [regex.decode('utf-8') for regex in regexes]
-      regex_type = unicode
-    elif regex_type is unicode and isinstance(actual_str, bytes):
+      regex_type = _UNICODE_TYPE
+    elif regex_type is _UNICODE_TYPE and isinstance(actual_str, bytes):
       regexes = [regex.encode('utf-8') for regex in regexes]
       regex_type = bytes
 
-    if regex_type is unicode:
+    if regex_type is _UNICODE_TYPE:
       regex = u'(?:%s)' % u')|(?:'.join(regexes)
     elif regex_type is bytes:
       regex = b'(?:' + (b')|(?:'.join(regexes)) + b')'
     else:
-      self.fail('Only know how to deal with unicode str or bytes regexes.')
+      self.fail('Only know how to deal with Unicode str or bytes regexes.')
 
     if not re.search(regex, actual_str, re.MULTILINE):
       self.fail(message or ('"%s" does not contain any of these '
@@ -482,7 +499,7 @@ class TestCase(unittest.TestCase):
 
     # Accommodate code which listed their output regexes w/o the b'' prefix by
     # converting them to bytes for the user.
-    if isinstance(regexes[0], unicode):
+    if isinstance(regexes[0], _UNICODE_TYPE):
       regexes = [regex.encode('utf-8') for regex in regexes]
 
     command_string = GetCommandString(command)
@@ -520,7 +537,7 @@ class TestCase(unittest.TestCase):
 
     # Accommodate code which listed their output regexes w/o the b'' prefix by
     # converting them to bytes for the user.
-    if isinstance(regexes[0], unicode):
+    if isinstance(regexes[0], _UNICODE_TYPE):
       regexes = [regex.encode('utf-8') for regex in regexes]
 
     command_string = GetCommandString(command)
@@ -824,8 +841,8 @@ class TestCase(unittest.TestCase):
 
     if a == b:
       return
-    a_items = Sorted(list(a.iteritems()))
-    b_items = Sorted(list(b.iteritems()))
+    a_items = Sorted(list(iter(a.items())))
+    b_items = Sorted(list(iter(b.items())))
 
     unexpected = []
     missing = []
@@ -838,7 +855,7 @@ class TestCase(unittest.TestCase):
       # Sort the entries based on their repr, not based on their sort order,
       # which will be non-deterministic across executions, for many types.
       entries = sorted((safe_repr(k), safe_repr(v))
-                       for k, v in dikt.iteritems())
+                       for k, v in iter(dikt.items()))
       return '{%s}' % (', '.join('%s: %s' % pair for pair in entries))
 
     message = ['%s != %s%s' % (Repr(a), Repr(b), ' (%s)' % msg if msg else '')]
@@ -1060,7 +1077,7 @@ class CapturedStream(object):
     # Open file to save stream to
     cap_fd = os.open(self._filename,
                      os.O_CREAT | os.O_TRUNC | os.O_WRONLY,
-                     0600)
+                     0o600)
 
     # Send stream to this file
     self._stream.flush()
@@ -1075,7 +1092,7 @@ class CapturedStream(object):
     # Append stream to file
     cap_fd = os.open(self._filename,
                      os.O_CREAT | os.O_APPEND | os.O_WRONLY,
-                     0600)
+                     0o600)
 
     # Send stream to this file
     self._stream.flush()
@@ -1106,7 +1123,7 @@ def _CaptureTestOutput(stream, filename):
     stream: Should be sys.stdout or sys.stderr.
     filename: File where output should be stored.
   """
-  assert not _captured_streams.has_key(stream)
+  assert stream not in _captured_streams
   _captured_streams[stream] = CapturedStream(stream, filename)
 
 
@@ -1116,8 +1133,8 @@ def _StopCapturingStream(stream):
   Args:
     stream: Should be sys.stdout or sys.stderr.
   """
-  assert _captured_streams.has_key(stream)
-  for cap_stream in _captured_streams.itervalues():
+  assert stream in _captured_streams
+  for cap_stream in iter(_captured_streams.values()):
     cap_stream.StopCapture()
 
 
@@ -1137,7 +1154,7 @@ def _DiffTestOutput(stream, golden_filename):
     # remove the current stream
     del _captured_streams[stream]
     # restore other stream capture
-    for cap_stream in _captured_streams.itervalues():
+    for cap_stream in iter(_captured_streams.values()):
       cap_stream.RestartCapture()
 
 
@@ -1258,9 +1275,6 @@ def _WriteTestData(data, filename):
   os.close(fd)
 
 
-_INT_TYPES = (int, long)  # Sadly there is no types.IntTypes defined for us.
-
-
 def _WalkStructureForProblems(a, b, aname, bname, problem_list):
   """The recursive comparison behind assertSameStructure."""
   if type(a) != type(b) and not (
@@ -1285,15 +1299,15 @@ def _WalkStructureForProblems(a, b, aname, bname, problem_list):
         problem_list.append('%s lacks [%r] but %s has it' % (aname, k, bname))
 
   # Strings are Sequences but we'll just do those with regular !=
-  elif isinstance(a, collections.Sequence) and not isinstance(a, basestring):
+  elif isinstance(a, collections.Sequence) and not isinstance(a, _STRING_TYPES):
     minlen = min(len(a), len(b))
-    for i in xrange(minlen):
+    for i in range(minlen):
       _WalkStructureForProblems(a[i], b[i],
                                 '%s[%d]' % (aname, i), '%s[%d]' % (bname, i),
                                 problem_list)
-    for i in xrange(minlen, len(a)):
+    for i in range(minlen, len(a)):
       problem_list.append('%s has [%i] but %s does not' % (aname, i, bname))
-    for i in xrange(minlen, len(b)):
+    for i in range(minlen, len(b)):
       problem_list.append('%s lacks [%i] but %s has it' % (aname, i, bname))
 
   else:
@@ -1381,7 +1395,7 @@ def GetCommandString(command):
   Returns:
     A string suitable for use as a shell command.
   """
-  if isinstance(command, types.StringTypes):
+  if isinstance(command, _STRING_TYPES):
     return command
   else:
     return shellutil.ShellEscapeList(command)
@@ -1405,7 +1419,7 @@ def GetCommandStderr(command, env=None, close_fds=True):
   if os.environ.get('PYTHON_RUNFILES') and not env.get('PYTHON_RUNFILES'):
     env['PYTHON_RUNFILES'] = os.environ['PYTHON_RUNFILES']
 
-  use_shell = isinstance(command, types.StringTypes)
+  use_shell = isinstance(command, _STRING_TYPES)
   process = subprocess.Popen(
       command,
       close_fds=close_fds,
@@ -1541,7 +1555,7 @@ def _RunInApp(function, args, kwargs):
     # Save command-line flags so the side effects of FLAGS(sys.argv) can be
     # undone.
     saved_flags = dict((f.name, SavedFlag(f))
-                       for f in FLAGS.FlagDict().itervalues())
+                       for f in iter(FLAGS.FlagDict().values()))
 
     # Here we'd like to change the default of alsologtostderr from False to
     # True, so the test programs's stderr will contain all the log messages.
@@ -1578,7 +1592,7 @@ def _RunInApp(function, args, kwargs):
     # after the command-line has been parsed. So we have the for loop below
     # to change back flags to their old values.
     argv = FLAGS(sys.argv)
-    for saved_flag in saved_flags.itervalues():
+    for saved_flag in iter(saved_flags.values()):
       saved_flag.RestoreFlag()
 
 

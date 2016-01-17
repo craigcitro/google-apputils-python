@@ -35,7 +35,7 @@ import pytz
 
 
 _MICROSECONDS_PER_SECOND = 1000000
-_MICROSECONDS_PER_SECOND_F = float(_MICROSECONDS_PER_SECOND)
+_MICROSECONDS_PER_SECOND_F = 1000000.0
 
 
 def SecondsToMicroseconds(seconds):
@@ -136,14 +136,12 @@ def UTCMicrosToDatetime(micros, tz=None):
   Returns:
     The datetime represented by the input value.
   """
-  # The conversion from micros to seconds for input into the
-  # utcfromtimestamp function needs to be done as a float to make sure
-  # we dont lose the sub-second resolution of the input time.
-  dt = datetime.datetime.utcfromtimestamp(
-      micros / _MICROSECONDS_PER_SECOND_F)
-  if tz is not None:
-    dt = tz.fromutc(dt)
-  return dt
+  # We need to create a datetime object without tzinfo otherwise fromutc()
+  # will fail.
+  dt = datetime.datetime(1970, 1, 1) + datetime.timedelta(microseconds=micros)
+  if not tz:
+    tz = pytz.UTC
+  return tz.fromutc(dt)
 
 
 def UTCMillisToDatetime(millis, tz=None):
@@ -360,7 +358,8 @@ class BaseTimestamp(datetime.datetime):
     Returns:
       New cls()
     """
-    return cls.utcfromtimestamp(ts/_MICROSECONDS_PER_SECOND_F)
+    return (BaseTimestamp(1970, 1, 1, tzinfo=pytz.UTC) +
+            datetime.timedelta(microseconds=ts))
 
   def AsSecondsSinceEpoch(self):
     """Return number of seconds since epoch (timestamp in seconds)."""
