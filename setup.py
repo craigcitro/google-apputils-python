@@ -84,4 +84,8 @@ setup(
     author="Google Inc.",
     author_email="opensource@google.com",
     url="https://github.com/google/google-apputils",
+    classifiers=[
+      'Programming Language :: Python',
+      'Programming Language :: Python :: 2',
+      ],
 )
