@@ -45,12 +45,12 @@ module should have a main block that runs basetest.main():
   if __name__ == '__main__':
     basetest.main()
 
-2. Add a setup requirement on google-apputils and set the test_dir option:
+2. Add a setup requirement on google-apputils and set the google_test_dir option:
   # In setup.py
   setup(
       ...
       setup_requires = ['google-apputils>=0.2'],
-      test_dir = 'tests',
+      google_test_dir = 'tests',
       )
 
 3. Run your tests:
