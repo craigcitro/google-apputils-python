@@ -28,18 +28,21 @@ PREFIX = __name__ + ':data/'
 class ResourcesTest(basetest.TestCase):
 
   def _CheckTestData(self, func):
-    self.assertEqual('test file a contents\n', func(PREFIX + 'a'))
-    self.assertEqual('test file b contents\n', func(PREFIX + 'b'))
+    self.assertEqual(
+        'test file a contents\n', func(PREFIX + 'a').decode('ascii'))
+    self.assertEqual(
+        'test file b contents\n', func(PREFIX + 'b').decode('ascii'))
 
   def testGetResource(self):
     self._CheckTestData(resources.GetResource)
 
   def testGetResourceAsFile(self):
-    self._CheckTestData(lambda n: resources.GetResourceAsFile(n).read())
+    self._CheckTestData(lambda n: resources.GetResourceAsFile(
+        n).read())
 
   def testGetResourceFilename(self):
-    self._CheckTestData(
-        lambda n: file_util.Read(resources.GetResourceFilename(n)))
+    self._CheckTestData(lambda n: file_util.Read(
+        resources.GetResourceFilename(n)))
 
 
 if __name__ == '__main__':

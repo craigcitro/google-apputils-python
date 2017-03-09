@@ -17,8 +17,13 @@
 
 
 
-import __builtin__
+try:
+  import __builtin__
+except ImportError:
+  import builtins as __builtin__
+
 import errno
+import io
 import os
 import posix
 import pwd
@@ -26,7 +31,7 @@ import shutil
 import stat
 import tempfile
 
-import mox
+from mox3 import mox
 
 from google.apputils import basetest
 from google.apputils import file_util
@@ -53,7 +58,7 @@ class FileUtilTempdirTest(basetest.TestCase):
   def setUp(self):
     self.temp_dir = tempfile.mkdtemp()
     self.file_path = self.temp_dir + 'sample.txt'
-    self.sample_contents = 'Random text: aldmkfhjwoem103u74.'
+    self.sample_contents = b'Random text: aldmkfhjwoem103u74.'
     # To avoid confusion in the mode tests.
     self.prev_umask = posix.umask(0)
 
@@ -62,29 +67,29 @@ class FileUtilTempdirTest(basetest.TestCase):
     posix.umask(self.prev_umask)
 
   def testWriteOverwrite(self):
-    file_util.Write(self.file_path, 'original contents')
+    file_util.Write(self.file_path, b'original contents')
     file_util.Write(self.file_path, self.sample_contents)
-    with open(self.file_path) as fp:
+    with open(self.file_path, 'rb') as fp:
       self.assertEquals(fp.read(), self.sample_contents)
 
   def testWriteExclusive(self):
-    file_util.Write(self.file_path, 'original contents')
+    file_util.Write(self.file_path, b'original contents')
     self.assertRaises(OSError, file_util.Write, self.file_path,
                       self.sample_contents, overwrite_existing=False)
 
   def testWriteMode(self):
-    mode = 0744
+    mode = 0o744
     file_util.Write(self.file_path, self.sample_contents, mode=mode)
     s = os.stat(self.file_path)
     self.assertEqual(stat.S_IMODE(s.st_mode), mode)
 
   def testAtomicWriteSuccessful(self):
     file_util.AtomicWrite(self.file_path, self.sample_contents)
-    with open(self.file_path) as fp:
+    with open(self.file_path, 'rb') as fp:
       self.assertEquals(fp.read(), self.sample_contents)
 
   def testAtomicWriteMode(self):
-    mode = 0745
+    mode = 0o745
     file_util.AtomicWrite(self.file_path, self.sample_contents, mode=mode)
     s = os.stat(self.file_path)
     self.assertEqual(stat.S_IMODE(s.st_mode), mode)
@@ -94,7 +99,7 @@ class FileUtilMoxTestBase(basetest.TestCase):
 
   def setUp(self):
     self.mox = mox.Mox()
-    self.sample_contents = 'Contents of the file'
+    self.sample_contents = b'Contents of the file'
     self.file_path = '/path/to/some/file'
     self.fd = 'a file descriptor'
 
@@ -117,16 +122,15 @@ class FileUtilMoxTest(FileUtilMoxTestBase):
     self.mox.VerifyAll()
 
   def testSuccessfulRead(self):
+    import logging
     file_handle = self.mox.CreateMockAnything()
-    self.mox.StubOutWithMock(__builtin__, 'open', use_mock_anything=True)
-    open(self.file_path).AndReturn(file_handle)
-    file_handle.__enter__().AndReturn(file_handle)
-    file_handle.read().AndReturn(self.sample_contents)
-    file_handle.__exit__(None, None, None)
+    self.mox.StubOutWithMock(__builtin__, 'open')
+    open(self.file_path, 'rb').AndReturn(io.BytesIO(self.sample_contents))
 
     self.mox.ReplayAll()
     try:
-      self.assertEquals(file_util.Read(self.file_path), self.sample_contents)
+      contents = file_util.Read(self.file_path)
+      self.assertEquals(contents, self.sample_contents)
       self.mox.VerifyAll()
     finally:
       # Because we mock out the built-in open() function, which the unittest
@@ -143,7 +147,7 @@ class FileUtilMoxTest(FileUtilMoxTestBase):
     self.mox.StubOutWithMock(os, 'chown')
     gid = 'new gid'
     os.open(self.file_path, os.O_WRONLY | os.O_TRUNC | os.O_CREAT,
-            0666).AndReturn(self.fd)
+            0o666).AndReturn(self.fd)
     os.write(self.fd, self.sample_contents)
     os.close(self.fd)
     os.chown(self.file_path, -1, gid)
@@ -223,10 +227,10 @@ class AtomicWriteMoxTest(FileUtilMoxTestBase):
 class TemporaryFilesMoxTest(FileUtilMoxTestBase):
 
   def testTemporaryFileWithContents(self):
-    contents = 'Inspiration!'
+    contents = b'Inspiration!'
     with file_util.TemporaryFileWithContents(contents) as temporary_file:
       filename = temporary_file.name
-      contents_read = open(temporary_file.name).read()
+      contents_read = open(temporary_file.name, 'rb').read()
       self.assertEqual(contents_read, contents)
 
     # Ensure that the file does not exist.
@@ -282,10 +286,10 @@ class MkDirsMoxTest(FileUtilMoxTestBase):
   def testNoErrorsAbsoluteOneDirWithForceMode(self):
     # record, replay
     os.mkdir('/foo')
-    os.chmod('/foo', 0707)
+    os.chmod('/foo', 0o707)
     self.mox.ReplayAll()
     # test, verify
-    file_util.MkDirs('/foo', force_mode=0707)
+    file_util.MkDirs('/foo', force_mode=0o707)
     self.mox.VerifyAll()
 
   def testNoErrorsExistingDirWithForceMode(self):
@@ -296,7 +300,7 @@ class MkDirsMoxTest(FileUtilMoxTestBase):
     os.path.isdir('/foo').AndReturn(True)
     self.mox.ReplayAll()
     # test, verify
-    file_util.MkDirs('/foo', force_mode=0707)
+    file_util.MkDirs('/foo', force_mode=0o707)
     self.mox.VerifyAll()
 
   def testNoErrorsAbsoluteSlashDot(self):
@@ -332,10 +336,10 @@ class MkDirsMoxTest(FileUtilMoxTestBase):
     os.mkdir('/foo').AndRaise(exist_error)  # /foo exists
     os.path.isdir('/foo').AndReturn(True)
     os.mkdir('/foo/bar')  # bar does not
-    os.chmod('/foo/bar', 0707)
+    os.chmod('/foo/bar', 0o707)
     self.mox.ReplayAll()
     # test, verify
-    file_util.MkDirs('/foo/bar', force_mode=0707)
+    file_util.MkDirs('/foo/bar', force_mode=0o707)
     self.mox.VerifyAll()
 
   def testNoErrorsRelativeOneDir(self):
@@ -396,10 +400,10 @@ class RmDirsTestCase(mox.MoxTestBase):
     test_dir = os.path.join(test_sandbox, 'test', 'dir')
 
     os.makedirs(test_sandbox)
-    with open(os.path.join(test_sandbox, 'file'), 'w'):
+    with open(os.path.join(test_sandbox, 'file'), 'wb'):
       pass
     os.makedirs(test_dir)
-    with open(os.path.join(test_dir, 'file'), 'w'):
+    with open(os.path.join(test_dir, 'file'), 'wb'):
       pass
 
     file_util.RmDirs(test_dir)

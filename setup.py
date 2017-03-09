@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
 try:
@@ -28,10 +29,10 @@ from setuptools.command import test
 REQUIRE = [
     "python-dateutil>=1.4",
     "python-gflags>=1.4",
-    "pytz>=2010",
+    "pytz",
     ]
 
-TEST_REQUIRE = ["mox>=0.5"]
+TEST_REQUIRE = ["mox3>=0.5"]
 
 if sys.version_info[:2] < (2, 7):
   # unittest2 is a backport of Python 2.7's unittest.
@@ -47,6 +48,12 @@ class GoogleTestWrapper(test.test, object):
   test_dir = None
 
   def __new__(cls, *args, **kwds):
+    if sys.version_info[0] >= 3:
+      # Change PYTHONPATH to include google.apputils so basetest
+      # can be directly imported. See comment at corresponding in
+      # basetest why this is necessary.
+      sys.path.insert(0, os.path.join('.', 'google', 'apputils'))
+
     from google.apputils import setup_command
     dist = setup_command.GoogleTest(*args, **kwds)
     dist.test_dir = GoogleTestWrapper.test_dir

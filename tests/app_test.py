@@ -13,17 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for app.py ."""
-
-
-
-
-import os
-import shutil
-import socket
-import sys
-
-import mox
+"""Tests for app.py."""
 
 from google.apputils import basetest
 

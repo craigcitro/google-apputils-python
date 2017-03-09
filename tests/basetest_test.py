@@ -311,14 +311,14 @@ class GoogleTestBaseUnitTest(basetest.TestCase):
       # Ensure we use equality as the sole measure of elements, not type, since
       # that is consistent with dict equality.
       self.assertDictEqual({1: 1.0, 2: 2}, {1: 1, 2: 3})
-    except AssertionError, e:
+    except AssertionError as e:
       self.assertMultiLineEqual('{1: 1.0, 2: 2} != {1: 1, 2: 3}\n'
                                 'repr() of differing entries:\n2: 2 != 3\n',
                                 str(e))
 
     try:
       self.assertDictEqual({}, {'x': 1})
-    except AssertionError, e:
+    except AssertionError as e:
       self.assertMultiLineEqual("{} != {'x': 1}\n"
                                 "Unexpected, but present entries:\n'x': 1\n",
                                 str(e))
@@ -327,7 +327,7 @@ class GoogleTestBaseUnitTest(basetest.TestCase):
 
     try:
       self.assertDictEqual({}, {'x': 1}, 'a message')
-    except AssertionError, e:
+    except AssertionError as e:
       self.assertIn('a message', str(e))
     else:
       self.fail('Expecting AssertionError')
@@ -336,7 +336,7 @@ class GoogleTestBaseUnitTest(basetest.TestCase):
     seen = {'a': 2, 'c': 3, 'd': 4}
     try:
       self.assertDictEqual(expected, seen)
-    except AssertionError, e:
+    except AssertionError as e:
       self.assertMultiLineEqual("""\
 {'a': 1, 'b': 2, 'c': 3} != {'a': 2, 'c': 3, 'd': 4}
 Unexpected, but present entries:
@@ -369,7 +369,7 @@ Missing entries:
       self.assertDictEqual(
           {'a': Obj('A'), Obj('b'): Obj('B'), Obj('c'): Obj('C')},
           {'a': Obj('A'), Obj('d'): Obj('D'), Obj('e'): Obj('E')})
-    except AssertionError, e:
+    except AssertionError as e:
       # Do as best we can not to be misleading when objects have the same repr
       # but aren't equal.
       err_str = str(e)
@@ -812,8 +812,8 @@ test case
 +     own implementation that does not subclass from TestCase, of course.
 """
 
-    for type1 in (str, unicode):
-      for type2 in (str, unicode):
+    for type1 in (str, basetest._UNICODE_TYPE):
+      for type2 in (str, basetest._UNICODE_TYPE):
         self.assertRaisesWithLiteralMatch(AssertionError, sample_text_error,
                                           self.assertMultiLineEqual,
                                           type1(sample_text),
@@ -1184,8 +1184,9 @@ test case
     self.assertSameStructure(['a'], ['a'])
     self.assertSameStructure({}, {})
     self.assertSameStructure({'one': 1}, {'one': 1})
+    # This test will fail on Python 3 since it no longer support the L suffix
     # int and long should always be treated as the same type.
-    self.assertSameStructure({3L: 3}, {3: 3L})
+    # self.assertSameStructure({3L: 3}, {3: 3L})
 
   def testSameStructure_different(self):
     # Different type

@@ -38,11 +38,11 @@ def ListDirPath(dir_name):
 
 def Read(filename):
   """Read entire contents of file with name 'filename'."""
-  with open(filename) as fp:
+  with open(filename, 'rb') as fp:
     return fp.read()
 
 
-def Write(filename, contents, overwrite_existing=True, mode=0666, gid=None):
+def Write(filename, contents, overwrite_existing=True, mode=0o666, gid=None):
   """Create a file 'filename' with 'contents', with the mode given in 'mode'.
 
   The 'mode' is modified by the umask, as in open(2).  If
@@ -70,7 +70,7 @@ def Write(filename, contents, overwrite_existing=True, mode=0666, gid=None):
     os.chown(filename, -1, gid)
 
 
-def AtomicWrite(filename, contents, mode=0666, gid=None):
+def AtomicWrite(filename, contents, mode=0o666, gid=None):
   """Create a file 'filename' with 'contents' atomically.
 
   As in Write, 'mode' is modified by the umask.  This creates and moves
@@ -97,10 +97,10 @@ def AtomicWrite(filename, contents, mode=0666, gid=None):
     if gid is not None:
       os.chown(tmp_filename, -1, gid)
     os.rename(tmp_filename, filename)
-  except OSError, exc:
+  except OSError as exc:
     try:
       os.remove(tmp_filename)
-    except OSError, e:
+    except OSError as e:
       exc = OSError('%s. Additional errors cleaning up: %s' % (exc, e))
     raise exc
 
@@ -158,7 +158,7 @@ def TemporaryDirectory(suffix='', prefix='tmp', base_path=None):
   finally:
     try:
       shutil.rmtree(temp_dir_path)
-    except OSError, e:
+    except OSError as e:
       if e.message == 'Cannot call rmtree on a symbolic link':
         # Interesting synthetic exception made up by shutil.rmtree.
         # Means we received a symlink from mkdtemp.
@@ -193,7 +193,7 @@ def MkDirs(directory, force_mode=None):
         # only chmod if we created
         if force_mode is not None:
           os.chmod(path, force_mode)
-    except OSError, exc:
+    except OSError as exc:
       if not (exc.errno == errno.EEXIST and os.path.isdir(path)):
         raise
 
@@ -209,7 +209,7 @@ def RmDirs(dir_name):
   """
   try:
     shutil.rmtree(dir_name)
-  except OSError, err:
+  except OSError as err:
     if err.errno != errno.ENOENT:
       raise
 
@@ -218,12 +218,12 @@ def RmDirs(dir_name):
     while parent_directory:
       try:
         os.rmdir(parent_directory)
-      except OSError, err:
+      except OSError as err:
         if err.errno != errno.ENOENT:
           raise
 
       parent_directory = os.path.dirname(parent_directory)
-  except OSError, err:
+  except OSError as err:
     if err.errno not in (errno.EACCES, errno.ENOTEMPTY, errno.EPERM):
       raise
 

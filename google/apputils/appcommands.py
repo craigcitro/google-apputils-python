@@ -176,7 +176,7 @@ def GetCommandAliasList():
 def GetFullCommandList():
   """Return list of registered commands, including aliases."""
   all_cmds = dict(GetCommandList())
-  for cmd_alias, cmd_name in GetCommandAliasList().iteritems():
+  for cmd_alias, cmd_name in iter(GetCommandAliasList().items()):
     all_cmds[cmd_alias] = all_cmds.get(cmd_name)
   return all_cmds
 
@@ -296,7 +296,7 @@ class Cmd(object):
         else:
           assert isinstance(ret, int)
         return ret
-      except app.UsageError, error:
+      except app.UsageError as error:
         app.usage(shorthelp=1, detailed_error=error, exitcode=error.exitcode)
       except:
         if FLAGS.pdb_post_mortem:
@@ -424,7 +424,7 @@ def _AddCmdInstance(command_name, cmd, command_aliases=None, **_):
 
 
 def _CheckCmdName(name_or_alias):
-  """Only allow strings for command names and aliases (reject unicode as well).
+  """Only allow strings for command names and aliases (reject Unicode as well).
 
   Args:
     name_or_alias: properly formatted string name or alias.
@@ -623,7 +623,9 @@ def AppcommandsUsage(shorthelp=0, writeto_stdout=0, detailed_error=None,
   else:
     # Show list of commands
     if show_cmd is None or show_cmd == 'help':
-      cmd_names = GetCommandList().keys()
+      # We need to convert to a list type since Python 3 will return
+      # a dict_keys type.
+      cmd_names = list(GetCommandList().keys())
       cmd_names.sort()
       stdfile.write('Any of the following commands:\n')
       doc = ', '.join(cmd_names)
@@ -635,7 +637,9 @@ def AppcommandsUsage(shorthelp=0, writeto_stdout=0, detailed_error=None,
     elif FLAGS.help or FLAGS.helpshort or shorthelp:
       cmd_names = []
     else:
-      cmd_names = GetCommandList().keys()  # show all commands
+      # We need to convert to a list type since Python 3 will return
+      # a dict_keys type.
+      cmd_names = list(GetCommandList().keys())  # show all commands
       cmd_names.sort()
   # Show the command help (none, one specific, or all)
   for name in cmd_names:
@@ -703,7 +707,7 @@ def ParseFlagsWithUsage(argv):
   try:
     _cmd_argv = FLAGS(argv)
     return _cmd_argv
-  except flags.FlagsError, error:
+  except flags.FlagsError as error:
     ShortHelpAndExit('FATAL Flags parsing error: %s' % error)
 
 
@@ -758,9 +762,9 @@ def _CommandsStart(unused_argv):
   try:
     sys.modules['__main__'].main(GetCommandArgv())
   # If sys.exit was called, return with error code.
-  except SystemExit, e:
+  except SystemExit as e:
     sys.exit(e.code)
-  except Exception, error:
+  except Exception as error:
     traceback.print_exc()  # Print a backtrace to stderr.
     ShortHelpAndExit('\nFATAL error in main: %s' % error)
 
