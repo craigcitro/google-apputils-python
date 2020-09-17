@@ -1060,7 +1060,7 @@ class CapturedStream(object):
     # Open file to save stream to
     cap_fd = os.open(self._filename,
                      os.O_CREAT | os.O_TRUNC | os.O_WRONLY,
-                     0600)
+                     0o600)
 
     # Send stream to this file
     self._stream.flush()
@@ -1075,7 +1075,7 @@ class CapturedStream(object):
     # Append stream to file
     cap_fd = os.open(self._filename,
                      os.O_CREAT | os.O_APPEND | os.O_WRONLY,
-                     0600)
+                     0o600)
 
     # Send stream to this file
     self._stream.flush()

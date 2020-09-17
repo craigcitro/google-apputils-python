@@ -119,7 +119,7 @@ def StripQuotes(s):
 
 def PrintOurUsage():
   """Print usage for the stub script."""
-  print 'Stub script %s (auto-generated). Options:' % sys.argv[0]
+  print ('Stub script %s (auto-generated). Options:' % sys.argv[0])
   print ('--helpstub               '
          'Show help for stub script.')
   print ('--debug_binary           '
@@ -204,8 +204,8 @@ def RunScriptModule(module):
     args = [sys.executable] + args
 
   if show_command_and_exit:
-    print 'program: "%s"' % program
-    print 'args:', args
+    print ('program: "%s"' % program)
+    print ('args:', args)
     sys.exit(0)
 
   try:
