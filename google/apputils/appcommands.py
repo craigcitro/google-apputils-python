@@ -296,7 +296,7 @@ class Cmd(object):
         else:
           assert isinstance(ret, int)
         return ret
-      except app.UsageError, error:
+      except (app.UsageError, error):
         app.usage(shorthelp=1, detailed_error=error, exitcode=error.exitcode)
       except:
         if FLAGS.pdb_post_mortem:
@@ -703,7 +703,7 @@ def ParseFlagsWithUsage(argv):
   try:
     _cmd_argv = FLAGS(argv)
     return _cmd_argv
-  except flags.FlagsError, error:
+  except (flags.FlagsError, error):
     ShortHelpAndExit('FATAL Flags parsing error: %s' % error)
 
 
@@ -758,9 +758,9 @@ def _CommandsStart(unused_argv):
   try:
     sys.modules['__main__'].main(GetCommandArgv())
   # If sys.exit was called, return with error code.
-  except SystemExit, e:
+  except (SystemExit, e):
     sys.exit(e.code)
-  except Exception, error:
+  except (Exception, error):
     traceback.print_exc()  # Print a backtrace to stderr.
     ShortHelpAndExit('\nFATAL error in main: %s' % error)
 
